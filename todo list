@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>晚自习复习清单</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: #f4f6fb;
+      color: #1f2937;
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+
+    .app {
+      width: min(720px, 100%);
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 12px 35px rgba(31, 41, 55, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    .form {
+      display: grid;
+      grid-template-columns: 1fr 150px auto;
+      gap: 12px;
+      align-items: start;
+    }
+
+    input,
+    button {
+      font: inherit;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 11px 12px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus {
+      border-color: #9ACD32;
+      box-shadow: 0 0 0 3px rgba(154, 205, 50, 0.16);
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 18px;
+      background: #8BC34A;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.92;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .error {
+      min-height: 22px;
+      margin: 10px 0 0;
+      color: #dc2626;
+      font-size: 14px;
+    }
+
+    .summary {
+      margin: 22px 0 14px;
+      padding: 14px 16px;
+      background: #F3F8E6;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    .summary strong {
+      color: #6B8E23;
+      font-size: 20px;
+    }
+
+    .task-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #ffffff;
+    }
+
+    .task-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      accent-color: #8BC34A;
+    }
+
+    .task-name {
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .task-time {
+      flex: 0 0 auto;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .task-item.completed .task-name,
+    .task-item.completed .task-time {
+      color: #9ca3af;
+      text-decoration: line-through;
+    }
+
+    .empty {
+      padding: 28px 10px;
+      text-align: center;
+      color: #9ca3af;
+      border: 1px dashed #d1d5db;
+      border-radius: 12px;
+    }
+
+    @media (max-width: 620px) {
+      .card {
+        padding: 22px;
+      }
+
+      .form {
+        grid-template-columns: 1fr;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card">
+      <h1>🌿 晚自习复习清单 🌱</h1>
+      <p class="subtitle">把今晚要完成的复习任务记下来，完成一项就勾掉一项。</p>
+
+      <form id="taskForm" class="form" novalidate>
+        <input
+          id="taskName"
+          type="text"
+          placeholder="任务名称，例如：背英语单词"
+          autocomplete="off"
+        />
+
+        <input
+          id="taskMinutes"
+          type="number"
+          placeholder="分钟"
+          min="1"
+          max="180"
+          step="1"
+        />
+
+        <button type="submit">添加任务</button>
+      </form>
+
+      <p id="errorMessage" class="error" aria-live="polite"></p>
+
+      <div class="summary">
+        未完成任务总时长：<strong id="remainingMinutes">0</strong> 分钟 🌿
+      </div>
+
+      <ul id="taskList" class="task-list"></ul>
+    </section>
+  </main>
+
+  <script>
+    // =========================
+    // 1. 状态（State）
+    // =========================
+    // 所有任务只保存在内存数组中，所以刷新页面后会自动清空。
+    const state = {
+      tasks: []
+    };
+
+    const taskForm = document.getElementById('taskForm');
+    const taskNameInput = document.getElementById('taskName');
+    const taskMinutesInput = document.getElementById('taskMinutes');
+    const errorMessage = document.getElementById('errorMessage');
+    const taskList = document.getElementById('taskList');
+    const remainingMinutes = document.getElementById('remainingMinutes');
+
+    function showError(message) {
+      errorMessage.textContent = message;
+    }
+
+    function clearError() {
+      errorMessage.textContent = '';
+    }
+
+    function validateInput(name, minutesRaw) {
+      if (name.trim() === '') {
+        return '请输入任务名称。';
+      }
+
+      if (minutesRaw.trim() === '') {
+        return '请输入分钟数。';
+      }
+
+      const minutes = Number(minutesRaw);
+
+      if (!Number.isInteger(minutes)) {
+        return '分钟数必须是 1 到 180 之间的整数，不能输入小数。';
+      }
+
+      if (minutes < 1) {
+        return '分钟数必须大于 0。';
+      }
+
+      if (minutes > 180) {
+        return '单项任务最多只能设置 180 分钟。';
+      }
+
+      return '';
+    }
+
+    // =========================
+    // 2. 渲染函数（Render）
+    // =========================
+    function render() {
+      taskList.innerHTML = '';
+
+      if (state.tasks.length === 0) {
+        const emptyItem = document.createElement('li');
+        emptyItem.className = 'empty';
+        emptyItem.textContent = '还没有任务，先添加今晚的第一项复习吧。';
+        taskList.appendChild(emptyItem);
+      } else {
+        state.tasks.forEach((task) => {
+          const item = document.createElement('li');
+          item.className = 'task-item';
+
+          if (task.completed) {
+            item.classList.add('completed');
+          }
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = task.completed;
+          checkbox.setAttribute('aria-label', `切换任务“${task.name}”的完成状态`);
+
+          // =========================
+          // 3. 事件（Event）：勾选 / 取消完成
+          // =========================
+          checkbox.addEventListener('change', () => {
+            task.completed = checkbox.checked;
+            render();
+          });
+
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'task-name';
+          nameSpan.textContent = task.name;
+
+          const timeSpan = document.createElement('span');
+          timeSpan.className = 'task-time';
+          timeSpan.textContent = `${task.minutes} 分钟`;
+
+          item.append(checkbox, nameSpan, timeSpan);
+          taskList.appendChild(item);
+        });
+      }
+
+      const total = state.tasks
+        .filter((task) => !task.completed)
+        .reduce((sum, task) => sum + task.minutes, 0);
+
+      remainingMinutes.textContent = total;
+    }
+
+    // =========================
+    // 4. 事件（Event）：添加任务
+    // =========================
+    taskForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const name = taskNameInput.value.trim();
+      const minutesRaw = taskMinutesInput.value;
+      const validationMessage = validateInput(name, minutesRaw);
+
+      if (validationMessage) {
+        showError(validationMessage);
+        return;
+      }
+
+      const minutes = Number(minutesRaw);
+
+      state.tasks.push({
+        id: Date.now(),
+        name,
+        minutes,
+        completed: false
+      });
+
+      clearError();
+      taskForm.reset();
+      taskNameInput.focus();
+      render();
+    });
+
+    // 首次进入页面时渲染一次空列表。
+    render();
+  </script>
+</body>
+</html>
