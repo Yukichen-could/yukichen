@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>森友大冒险 · Animal Friends Adventure</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+
+    <canvas id="game" width="960" height="560"></canvas>
+
+    <!-- ============ HUD ============ -->
+    <div id="hud" class="hidden">
+      <div class="hud-row">
+        <div class="hud-card hud-left">
+          <canvas id="hud-avatar" width="120" height="120"></canvas>
+          <div class="meta">
+            <div class="pname" id="hud-name">Player</div>
+            <div class="hearts" id="hud-hearts"></div>
+          </div>
+        </div>
+
+        <div class="hud-card hud-center">
+          <div class="lvl-line">
+            <span id="hud-level">关卡 1/6</span>
+            <span class="dot">·</span>
+            <span id="hud-theme">春 · 青青草原</span>
+            <span class="pct" id="hud-pct">0%</span>
+          </div>
+          <div class="bar">
+            <div class="bar-fill" id="hud-bar"></div>
+            <div class="bar-icon" id="hud-bar-icon">🍃</div>
+          </div>
+          <div class="leaves" id="hud-leaves"></div>
+        </div>
+
+        <div class="hud-card hud-right">
+          <div class="counter"><span class="bell">🔔</span><b id="hud-bells">0</b></div>
+          <div class="icon-row">
+            <button class="icon-btn shop" id="btn-shop" title="用 20 铃钱换手枪（本局限定）">🔫<i class="cost">20</i></button>
+            <button class="icon-btn" id="btn-sound" title="音效 / 音乐">🔊</button>
+            <button class="icon-btn" id="btn-pause" title="暂停">⏸</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 关卡开场横幅 ============ -->
+    <div id="banner" class="banner hidden">
+      <div class="banner-inner">
+        <div class="banner-tag" id="banner-tag">LEVEL 1</div>
+        <div class="banner-name" id="banner-name">春 · 青青草原</div>
+        <div class="banner-sub" id="banner-sub">向目标前进吧！</div>
+      </div>
+    </div>
+
+    <!-- ============ 开始界面 ============ -->
+    <div id="screen-start" class="screen">
+      <div class="panel start-panel">
+        <div class="logo">
+          <span class="leaf-mark">🍃</span>
+          <div>
+            <h1>森友大冒险</h1>
+            <p class="sub">Animal Friends Adventure · 全 6 关</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>玩家名字</label>
+          <input id="player-name" maxlength="12" placeholder="输入你的名字" autocomplete="off" spellcheck="false">
+        </div>
+
+        <div class="field">
+          <label>选择你的形象</label>
+          <div class="avatars" id="avatar-list"></div>
+        </div>
+
+        <div class="field">
+          <label>关卡</label>
+          <div class="levels" id="level-list"></div>
+        </div>
+
+        <button class="btn primary big" id="btn-start">开始冒险</button>
+        <p class="hint">← → / A D 移动 &nbsp;·&nbsp; 空格 / ↑ 跳跃 &nbsp;·&nbsp; J 射击 &nbsp;·&nbsp; P 暂停 &nbsp;·&nbsp; M 静音</p>
+      </div>
+    </div>
+
+    <!-- ============ 提示条 ============ -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- ============ 头像裁剪界面 ============ -->
+    <div id="screen-crop" class="screen hidden">
+      <div class="panel crop-panel">
+        <h2>裁剪你的头像</h2>
+        <div class="crop-wrap">
+          <canvas id="crop-canvas" width="320" height="320"></canvas>
+          <div class="crop-ring"></div>
+        </div>
+        <div class="crop-ctrl">
+          <span>缩放</span>
+          <input type="range" id="crop-zoom" min="100" max="320" value="100">
+        </div>
+        <div class="row">
+          <button class="btn ghost" id="crop-cancel">取消</button>
+          <button class="btn primary" id="crop-ok">就用这张</button>
+        </div>
+        <p class="hint">拖动图片调整位置，圆形区域就是最终头像</p>
+      </div>
+    </div>
+
+    <!-- ============ 暂停界面 ============ -->
+    <div id="screen-pause" class="screen hidden">
+      <div class="panel small-panel">
+        <h2>暂停中</h2>
+        <button class="btn primary" id="btn-resume">继续游戏</button>
+        <button class="btn ghost" id="btn-restart">重玩本关</button>
+        <button class="btn ghost" id="btn-quit">回到标题</button>
+        <div class="sound-row">
+          <button class="btn tiny" id="btn-buy-gun">🔫 兑换手枪 · 20 铃钱（本局限定）</button>
+          <button class="btn tiny" id="btn-bgm-file">🎵 载入自定义 BGM</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 过关界面 ============ -->
+    <div id="screen-clear" class="screen hidden">
+      <div class="panel small-panel">
+        <div class="clear-badge">🎉</div>
+        <h2 id="clear-title">关卡完成！</h2>
+        <div class="stats" id="clear-stats"></div>
+        <button class="btn primary" id="btn-next">进入下一关</button>
+        <button class="btn ghost" id="btn-retry">再挑战一次</button>
+      </div>
+    </div>
+
+    <!-- ============ 通关庆祝 ============ -->
+    <div id="screen-congrats" class="screen hidden">
+      <div class="confetti" id="confetti"></div>
+      <div class="panel congrats-panel">
+        <div class="trophy">🏆</div>
+        <h1 class="congrats-title">CONGRATULATIONS!</h1>
+        <p class="congrats-sub">恭喜 <b id="congrats-name">玩家</b> 通关全部 6 个关卡！</p>
+        <div class="congrats-avatar" id="congrats-avatar"></div>
+        <div class="stats" id="congrats-stats"></div>
+        <p class="congrats-quote" id="congrats-quote"></p>
+        <div class="row">
+          <button class="btn primary" id="btn-again">再玩一次</button>
+          <button class="btn ghost" id="btn-home">回到标题</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 触屏操作 ============ -->
+    <div id="touch" class="hidden">
+      <div class="tpad">
+        <button class="tbtn" data-key="left">◀</button>
+        <button class="tbtn" data-key="right">▶</button>
+      </div>
+      <div class="tpad right">
+        <button class="tbtn shoot" data-key="shoot">枪</button>
+        <button class="tbtn jump" data-key="jump">跳</button>
+      </div>
+    </div>
+
+    <input type="file" id="file-input" accept="image/*" hidden>
+    <input type="file" id="bgm-input" accept="audio/*" hidden>
+  </div>
+</div>
+
+<script src="js/audio.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/art.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
